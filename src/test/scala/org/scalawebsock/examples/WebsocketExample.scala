@@ -1,6 +1,7 @@
 package org.scalawebsock.examples
 
 import java.net.URI
+import org.scalawebsock.WebSocket
 
 /**
  * 
