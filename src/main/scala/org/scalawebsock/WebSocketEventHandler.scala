@@ -5,10 +5,10 @@ package org.scalawebsock
  */
 trait WebSocketEventHandler {
 
-  def onOpen()
+  def onOpen(socket: WebSocket)
 
-  def onMessage(message: String)
+  def onMessage(message: String, socket: WebSocket)
 
-  def onClose()
+  def onClose(socket: WebSocket)
 
 }
