@@ -9,6 +9,6 @@ trait WebSocketEventHandler {
 
   def onMessage(message: String, socket: WebSocket)
 
-  def onClose(socket: WebSocket)
+  def onClose(socket: WebSocket, reason: CloseReason)
 
 }

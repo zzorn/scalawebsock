@@ -2,9 +2,7 @@ package org.scalawebsock
 
 import protocols.{Hixie75Protocol, WebSocketProtocol}
 import java.net.{Socket, URI}
-import javax.xml.ws.WebServiceClient
-import java.io.{PrintStream, DataInputStream, InputStream}
-import org.scalawebsock.WebsocketConnected
+import java.io._
 
 /**
  * 
@@ -15,8 +13,8 @@ class WebSocket(uri: URI,
 
   private var socket: Socket = null
   private var _state: WebsocketState = WebsocketStartup
-  private var inputStream: DataInputStream = null
-  private var outputStream: PrintStream = null
+  private var inputStream: BufferedReader = null
+  private var outputStream: Writer = null
 
   def state: WebsocketState  = _state
 
@@ -26,47 +24,69 @@ class WebSocket(uri: URI,
   def connect() {
     _state = WebsocketConnecting
 
-    socket = new Socket(uri)
-    inputStream = new DataInputStream(socket.getInputStream)
-    outputStream = new PrintStream(socket.getOutputStream)
+    try {
 
-    protocol.shakeHands(inputStream, outputStream)
+      socket = new Socket(uri)
+      inputStream = new BufferedReader( new InputStreamReader(socket.getInputStream))
+      outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
 
-    _state = WebsocketConnected
+      protocol.shakeHands(inputStream, outputStream)
 
-    handler.onOpen()
+      _state = WebsocketConnected
 
-    if (state == WebsocketConnected) {
-      var message = protocol.readMessage(inputStream)
-      while (state == WebsocketConnected && message != null) {
-        handler.onMessage(message)
-        message = protocol.readMessage(inputStream)
+      handler.onOpen(this)
+
+      if (state == WebsocketConnected) { // (open handler might have closed connection for some reason, so check)
+        var message = protocol.readMessage(inputStream)
+        while (state == WebsocketConnected && message != null) {
+          handler.onMessage(message)
+          message = protocol.readMessage(inputStream)
+        }
+      }
+
+      doClose(ClosedByRemote)
+    }
+    catch {
+      case e: Throwable => {
+        doClose(ClosedBecauseOfError(e))
+        throw e
       }
     }
-
-    close()
   }
 
   def send(message: String) {
-    protocol.sendMessage(message, outputStream)
+    try {
+      protocol.sendMessage(message, outputStream)
+      outputStream.flush()
+    } catch {
+      case e: Throwable => {
+        doClose(ClosedBecauseOfError(e))
+        throw e
+      }
+    }
   }
 
   def close() {
+    doClose(ClosedByLocal)
+  }
+
+  private def doClose(reason: CloseReason) {
     _state = WebsocketClosing
 
-    if (socket != null) {
-      inputStream.close()
-      outputStream.close()
-      socket.close()
-    }
+    if (inputStream != null) inputStream.close()
+    if (outputStream != null) outputStream.close()
+    if (socket != null) socket.close()
+
     socket = null
     inputStream = null
     outputStream = null
 
     _state = WebsocketClosed
 
-    handler.onClose()
+    handler.onClose(this, reason)
   }
 
 }
+
+
 
