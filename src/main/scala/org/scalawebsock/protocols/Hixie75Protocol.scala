@@ -2,14 +2,17 @@ package org.scalawebsock.protocols
 
 import java.io._
 import org.scalawebsock.WebsocketException
+import javax.xml.ws.WebServiceException
 
 /**
- * 
+ *
+ *
+ * Reference: http://tools.ietf.org/html/draft-hixie-thewebsocketprotocol-75
  */
 
 object Hixie75Protocol extends WebSocketProtocol {
 
-  private val clientHeader: String = "GET /demo HTTP/1.1"
+  private val clientHeader: String = "GET /demo HTTP/1.1"  // TODO: Fill in /demo based on parameters
   private val serverHeader: String = "HTTP/1.1 101 Web Socket Protocol Handshake"
 
   private val upgradeProperty: String = "Upgrade"
@@ -19,6 +22,9 @@ object Hixie75Protocol extends WebSocketProtocol {
   private val connectionValue: String = "Upgrade"
 
   private val subProtocolProperty: String = "WebSocket-Protocol"
+
+  private val frameStart = 0x00
+  private val frameEnd = 0xFF
 
   def clientHandshake(clientProperties: Map[String, String],
                       input: BufferedReader,
@@ -49,16 +55,35 @@ object Hixie75Protocol extends WebSocketProtocol {
 
   def sendMessage(message: String, output: Writer) {
     // Send start char
+    output.write(frameStart)
 
     // Send message
+    output.write(message)
 
     // Send end char
+    output.write(frameEnd)
   }
 
   def readMessage(input: BufferedReader): String = {
     // Read start char
+    val frameType = input.read()
 
-    // Read message until end char
+    if (frameType == frameStart) {
+      // Read message until end char
+      val s = new StringBuilder()
+      var c = input.read()
+      while (c != -1 && c != frameEnd) {
+        s.append(c.toChar)
+        c = input.read()
+      }
+
+      if (c == -1) throw new WebsocketException("Connection closed in the middle of a frame")
+
+      s.toString()
+    }
+    else {
+      throw new WebsocketException("Unexpected start of a frame ('"+frameType+"')")
+    }
   }
 
   private def verifyRequestedSubProtocolOnClient(clientProperties: Map[String, String], receivedProperties: Map[String, String]) {
@@ -70,7 +95,7 @@ object Hixie75Protocol extends WebSocketProtocol {
       }
       else {
         val serverSubProtocol = receivedProperties(subProtocolProperty)
-        if (!serverSubProtocol == subProtocol) {
+        if (serverSubProtocol != subProtocol) {
           throw makeException("server", "Client requested to use the '" + subProtocol + "', but the server returned suprotocol '" + serverSubProtocol + "'")
         }
       }
@@ -154,7 +179,7 @@ object Hixie75Protocol extends WebSocketProtocol {
     if (value.get != expectedValue) throw makeException(otherParty, "Expected "+property+" property to be '" + expectedValue + "', but it was '" + value.get + "'")
   }
 
-  private def makeException(otherPart: String, desc: String, line: String = null): String = {
+  private def makeException(otherPart: String, desc: String, line: String = null): Throwable = {
     new WebsocketException("Error during handshake with "+otherPart+": "+desc+ (if (line != null) " on line '" + line + "'" else ""))
   }
 

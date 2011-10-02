@@ -26,11 +26,14 @@ class WebSocket(uri: URI,
 
     try {
 
-      socket = new Socket(uri)
+      // TODO: Pass the part after the host to the protocol connection routines..
+
+      socket = new Socket(uri.getHost , uri.getPort)
       inputStream = new BufferedReader( new InputStreamReader(socket.getInputStream))
       outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
 
-      protocol.shakeHands(inputStream, outputStream)
+      val properties: Map[String, String] = Map()
+      protocol.clientHandshake(properties, inputStream, outputStream)
 
       _state = WebsocketConnected
 
@@ -39,7 +42,7 @@ class WebSocket(uri: URI,
       if (state == WebsocketConnected) { // (open handler might have closed connection for some reason, so check)
         var message = protocol.readMessage(inputStream)
         while (state == WebsocketConnected && message != null) {
-          handler.onMessage(message)
+          handler.onMessage(message, this)
           message = protocol.readMessage(inputStream)
         }
       }

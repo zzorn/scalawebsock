@@ -7,9 +7,6 @@ import java.io._
  */
 trait WebSocketProtocol {
 
-  def clientHandshake(input: BufferedReader,
-                      output: Writer)
-
   /**
    * Client side handshake.  Returns map with server properties.
    */
@@ -22,7 +19,8 @@ trait WebSocketProtocol {
    */
   def serverHandshake(serverProperties: Map[String, String],
                       input: BufferedReader,
-                      output: Writer): Map[String, String]
+                      output: Writer,
+                      supportedSubProtocols: Set[String]): Map[String, String]
 
   def sendMessage(message: String, output: Writer)
 
