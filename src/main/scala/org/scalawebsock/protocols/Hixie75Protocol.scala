@@ -3,6 +3,7 @@ package org.scalawebsock.protocols
 import java.io._
 import org.scalawebsock.WebsocketException
 import javax.xml.ws.WebServiceException
+import org.scalawebsock.util.WebsocketURL
 
 /**
  *
@@ -12,7 +13,8 @@ import javax.xml.ws.WebServiceException
 
 object Hixie75Protocol extends WebSocketProtocol {
 
-  private val clientHeader: String = "GET /demo HTTP/1.1"  // TODO: Fill in /demo based on parameters
+  private val clientHeaderPrefix: String = "GET "
+  private val clientHeaderPostfix: String = " HTTP/1.1"
   private val serverHeader: String = "HTTP/1.1 101 Web Socket Protocol Handshake"
 
   private val upgradeProperty: String = "Upgrade"
@@ -21,16 +23,20 @@ object Hixie75Protocol extends WebSocketProtocol {
   private val connectionProperty: String = "Connection"
   private val connectionValue: String = "Upgrade"
 
-  private val subProtocolProperty: String = "WebSocket-Protocol"
+  val subProtocolProperty: String = "WebSocket-Protocol"
 
   private val frameStart = 0x00
   private val frameEnd = 0xFF
 
-  def clientHandshake(clientProperties: Map[String, String],
+  private def makeClientHeader(host: WebsocketURL): String = {
+    clientHeaderPrefix + host.resourceName + clientHeaderPostfix
+  }
+
+  def clientHandshake(clientProperties: ClientProperties,
                       input: BufferedReader,
                       output: Writer): Map[String, String] = {
 
-    sendHandshake(output, clientHeader, clientProperties)
+    sendHandshake(output, makeClientHeader(clientProperties.host), clientProperties)
 
     val receivedProperties = receiveHandshake(input, serverHeader, "server")
 
@@ -39,14 +45,13 @@ object Hixie75Protocol extends WebSocketProtocol {
     receivedProperties
   }
 
-  def serverHandshake(serverProperties: Map[String, String],
+  def serverHandshake(serverProperties: ServerProperties,
                       input: BufferedReader,
-                      output: Writer,
-                      supportedSubProtocols: Set[String]): Map[String, String] = {
+                      output: Writer): Map[String, String] = {
 
-    val clientProperties = receiveHandshake(input, clientHeader, "client")
+    val clientProperties = receiveHandshake(input, makeClientHeader(serverProperties.host), "client")
 
-    val updatedServerProps = verifyRequestedSubProtocolOnServer(serverProperties, clientProperties, supportedSubProtocols)
+    val updatedServerProps = verifyRequestedSubProtocolOnServer(serverProperties, clientProperties, serverProperties.supportedSubProtocols)
 
     sendHandshake(output, serverHeader, updatedServerProps)
 
@@ -121,12 +126,12 @@ object Hixie75Protocol extends WebSocketProtocol {
   }
 
 
-  private def sendHandshake(output: Writer, header: String, properties: Map[String, String]) {
+  private def sendHandshake(output: Writer, header: String, properties: ClientProperties) {
     output.write(header + "\n")
     output.write("Upgrade: WebSocket\n")
     output.write("Connection: Upgrade\n")
 
-    properties foreach {
+    properties.asMap foreach {
       property: (String, String) =>
         val name = property._1
         val value = property._2

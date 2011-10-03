@@ -10,17 +10,16 @@ trait WebSocketProtocol {
   /**
    * Client side handshake.  Returns map with server properties.
    */
-  def clientHandshake(clientProperties: Map[String, String],
+  def clientHandshake(clientProperties: ClientProperties,
                       input: BufferedReader,
                       output: Writer): Map[String, String]
 
   /**
    * Server side handshake.  Returns map with client properties.
    */
-  def serverHandshake(serverProperties: Map[String, String],
+  def serverHandshake(serverProperties: ServerProperties,
                       input: BufferedReader,
-                      output: Writer,
-                      supportedSubProtocols: Set[String]): Map[String, String]
+                      output: Writer): Map[String, String]
 
   def sendMessage(message: String, output: Writer)
 
