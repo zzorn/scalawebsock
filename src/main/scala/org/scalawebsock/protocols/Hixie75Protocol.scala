@@ -23,6 +23,12 @@ object Hixie75Protocol extends WebSocketProtocol {
   private val connectionProperty: String = "Connection"
   private val connectionValue: String = "Upgrade"
 
+  private val hostProperty: String = "Host"
+  private val originProperty: String = "Origin"
+
+  private val websocketOriginProperty: String = "WebSocket-Origin"
+  private val websocketLocationProperty: String = "WebSocket-Location"
+
   val subProtocolProperty: String = "WebSocket-Protocol"
 
   private val frameStart = 0x00
@@ -36,7 +42,7 @@ object Hixie75Protocol extends WebSocketProtocol {
                       input: BufferedReader,
                       output: Writer): Map[String, String] = {
 
-    sendHandshake(output, makeClientHeader(clientProperties.host), clientProperties)
+    sendClientHandshake(output, clientProperties)
 
     val receivedProperties = receiveHandshake(input, serverHeader, "server")
 
@@ -49,11 +55,11 @@ object Hixie75Protocol extends WebSocketProtocol {
                       input: BufferedReader,
                       output: Writer): Map[String, String] = {
 
-    val clientProperties = receiveHandshake(input, makeClientHeader(serverProperties.host), "client")
+    val clientProperties = receiveHandshake(input, makeClientHeader(serverProperties.location), "client")
 
     val updatedServerProps = verifyRequestedSubProtocolOnServer(serverProperties, clientProperties, serverProperties.supportedSubProtocols)
 
-    sendHandshake(output, serverHeader, updatedServerProps)
+    sendServerHandshake(output, serverHeader, updatedServerProps)
 
     clientProperties
   }
@@ -126,20 +132,40 @@ object Hixie75Protocol extends WebSocketProtocol {
   }
 
 
-  private def sendHandshake(output: Writer, header: String, properties: ClientProperties) {
-    output.write(header + "\n")
-    output.write("Upgrade: WebSocket\n")
-    output.write("Connection: Upgrade\n")
+  private def writeProperty(output: Writer, name: String, value: String) {
+    output.write(name)
+    output.write(": ")
+    output.write(value)
+  }
 
-    properties.asMap foreach {
-      property: (String, String) =>
-        val name = property._1
-        val value = property._2
-        output.write(name)
-        output.write(": ")
-        output.write(value)
-        output.write("\n")
+  private def sendClientHandshake(output: Writer, properties: ClientProperties) {
+    output.write(makeClientHeader(properties.location) + "\n")
+    writeProperty(output, upgradeProperty, upgradeValue)
+    writeProperty(output, connectionProperty, connectionValue)
+    writeProperty(output, hostProperty, properties.location.host + ":" + properties.location.port)
+    writeProperty(output, originProperty, properties.origin)
+
+    if (properties.subProtocol != null && !properties.subProtocol.isEmpty) {
+      writeProperty(output, subProtocolProperty, properties.subProtocol)
     }
+
+    output.write("\n")
+
+    output.flush()
+  }
+
+  private def sendServerHandshake(output: Writer, subProtocol: String, properties: ServerProperties) {
+    output.write(serverHeader + "\n")
+    writeProperty(output, upgradeProperty, upgradeValue)
+    writeProperty(output, connectionProperty, connectionValue)
+    writeProperty(output, websocketOriginProperty, properties.origin)
+    writeProperty(output, websocketLocationProperty, properties.location.toString)
+
+    if (subProtocol != null) {
+      writeProperty(output, subProtocolProperty, subProtocol)
+    }
+
+    output.write("\n")
 
     output.flush()
   }
