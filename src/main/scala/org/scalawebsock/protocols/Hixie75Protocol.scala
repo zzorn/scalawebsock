@@ -97,10 +97,10 @@ object Hixie75Protocol extends WebSocketProtocol {
     }
   }
 
-  private def verifyRequestedSubProtocolOnClient(clientProperties: Map[String, String], receivedProperties: Map[String, String]) {
+  private def verifyRequestedSubProtocolOnClient(clientProperties: ClientProperties, receivedProperties: Map[String, String]) {
     // Verify that any requested subprotocol is supported
-    if (clientProperties.contains(subProtocolProperty)) {
-      val subProtocol: String = clientProperties(subProtocolProperty)
+    if (clientProperties.subProtocol != null) {
+      val subProtocol: String = clientProperties.subProtocol
       if (!receivedProperties.contains(subProtocolProperty)) {
         throw makeException("server", "Client requested to use the '" + subProtocol + "', but the server did not specify any suprotocol")
       }
@@ -113,7 +113,7 @@ object Hixie75Protocol extends WebSocketProtocol {
     }
   }
 
-  private def verifyRequestedSubProtocolOnServer(serverProperties: Map[String, String], clientProperties: Map[String, String], supportedSubProtocols: Set[String]): Map[String, String] = {
+  private def verifyRequestedSubProtocolOnServer(serverProperties: ServerProperties, clientProperties: Map[String, String], supportedSubProtocols: Set[String]): ServerProperties = {
     // Check if there is a requested subprotocol, and if it is supported
     var updatedServerProps = serverProperties
     if (clientProperties.contains(subProtocolProperty)) {
@@ -125,7 +125,7 @@ object Hixie75Protocol extends WebSocketProtocol {
       }
       else {
         // Acknowledge support for the subprotocol
-        updatedServerProps += subProtocolProperty -> subProtocol
+        updatedServerProps.subProtocol = subProtocol
       }
     }
     updatedServerProps

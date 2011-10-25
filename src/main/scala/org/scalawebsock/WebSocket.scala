@@ -1,8 +1,8 @@
 package org.scalawebsock
 
-import protocols.{Hixie75Protocol, WebSocketProtocol}
 import java.net.{Socket, URI}
 import java.io._
+import protocols.{ClientProperties, Hixie75Protocol, WebSocketProtocol}
 
 /**
  * 
@@ -21,7 +21,7 @@ class WebSocket(uri: URI,
   /**
    * Connects and listens to incoming traffic.  Blocks until the connection is closed.
    */
-  def connect() {
+  def connect(clientProperties: ClientProperties) {
     _state = WebsocketConnecting
 
     try {
@@ -32,8 +32,7 @@ class WebSocket(uri: URI,
       inputStream = new BufferedReader( new InputStreamReader(socket.getInputStream))
       outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
 
-      val properties: Map[String, String] = Map()
-      protocol.clientHandshake(properties, inputStream, outputStream)
+      protocol.clientHandshake(clientProperties, inputStream, outputStream)
 
       _state = WebsocketConnected
 
