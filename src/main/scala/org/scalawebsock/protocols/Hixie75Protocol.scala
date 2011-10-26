@@ -151,7 +151,6 @@ object Hixie75Protocol extends WebSocketProtocol {
     }
 
     output.write("\n")
-    output.write("\n")
 
     output.flush()
   }

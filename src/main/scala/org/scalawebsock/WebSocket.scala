@@ -4,6 +4,7 @@ import java.net.{Socket, URI}
 import java.io._
 import protocols.{ClientProperties, Hixie75Protocol, WebSocketProtocol}
 import util.WebsocketURL
+import java.nio.charset.Charset
 
 /**
  * 
@@ -12,6 +13,9 @@ class WebSocket(uri: WebsocketURL,
                 handler: WebSocketEventHandler,
                 protocol: WebSocketProtocol = Hixie75Protocol,
                 debug: Boolean = false) {
+
+  private val charset: Charset = Charset.forName("UTF-8")
+
 
   private var socket: Socket = null
   private var _state: WebsocketState = WebsocketStartup
@@ -31,8 +35,8 @@ class WebSocket(uri: WebsocketURL,
       // TODO: Pass the part after the host to the protocol connection routines..
 
       socket = new Socket(uri.host , uri.port)
-      inputStream = new BufferedReader( new InputStreamReader(socket.getInputStream))
-      outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
+      inputStream = new BufferedReader( new InputStreamReader(socket.getInputStream, charset.newDecoder()))
+      outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream, charset.newEncoder()))
 
       if (debug) {
         inputStream = new BufferedReader(inputStream) {
