@@ -3,13 +3,15 @@ package org.scalawebsock
 import java.net.{Socket, URI}
 import java.io._
 import protocols.{ClientProperties, Hixie75Protocol, WebSocketProtocol}
+import util.WebsocketURL
 
 /**
  * 
  */
-class WebSocket(uri: URI,
+class WebSocket(uri: WebsocketURL,
                 handler: WebSocketEventHandler,
-                protocol: WebSocketProtocol = Hixie75Protocol) {
+                protocol: WebSocketProtocol = Hixie75Protocol,
+                debug: Boolean = false) {
 
   private var socket: Socket = null
   private var _state: WebsocketState = WebsocketStartup
@@ -28,9 +30,25 @@ class WebSocket(uri: URI,
 
       // TODO: Pass the part after the host to the protocol connection routines..
 
-      socket = new Socket(uri.getHost , uri.getPort)
+      socket = new Socket(uri.host , uri.port)
       inputStream = new BufferedReader( new InputStreamReader(socket.getInputStream))
       outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
+
+      if (debug) {
+        inputStream = new BufferedReader(inputStream) {
+          override def readLine(): String = {
+            val line: String = super.readLine()
+            print(line)
+            line
+          }
+        }
+        outputStream = new FilterWriter(outputStream) {
+          override def write(str: String) {
+            super.write(str)
+            print(str)
+          }
+        }
+      }
 
       protocol.clientHandshake(clientProperties, inputStream, outputStream)
 

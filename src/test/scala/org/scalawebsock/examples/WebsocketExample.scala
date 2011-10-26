@@ -8,15 +8,14 @@ import org.scalawebsock.util.WebsocketURL
 /**
  * 
  */
-class WebsocketExample {
+object WebsocketExample {
   def main(args: Array[String]) {
 
-    val location = WebsocketURL("ws://127.0.0.1:8080/test")
-    val origin: String = "test"
+    val location = WebsocketURL("http://localhost:8080/test")
+    val origin: String = "null"
     val clientProperties: ClientProperties = new ClientProperties(location, origin)
 
-    val url = new URI("ws://127.0.0.1:8080/test")
-    val socket = new WebSocket(url, new WebSocketEventHandler {
+    val socket = new WebSocket(location, new WebSocketEventHandler {
       def onClose(socket: WebSocket, reason: CloseReason) {
 
       }
@@ -28,7 +27,7 @@ class WebsocketExample {
       def onOpen(socket: WebSocket) {
         
       }
-    })
+    }, debug = true)
 
     socket.connect(clientProperties)
 

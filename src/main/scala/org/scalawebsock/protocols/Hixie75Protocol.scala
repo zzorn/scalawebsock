@@ -136,19 +136,21 @@ object Hixie75Protocol extends WebSocketProtocol {
     output.write(name)
     output.write(": ")
     output.write(value)
+    output.write("\n")
   }
 
   private def sendClientHandshake(output: Writer, properties: ClientProperties) {
     output.write(makeClientHeader(properties.location) + "\n")
     writeProperty(output, upgradeProperty, upgradeValue)
     writeProperty(output, connectionProperty, connectionValue)
-    writeProperty(output, hostProperty, properties.location.host + ":" + properties.location.port)
+    writeProperty(output, hostProperty, properties.location.host)
     writeProperty(output, originProperty, properties.origin)
 
     if (properties.subProtocol != null && !properties.subProtocol.isEmpty) {
       writeProperty(output, subProtocolProperty, properties.subProtocol)
     }
 
+    output.write("\n")
     output.write("\n")
 
     output.flush()
@@ -174,6 +176,7 @@ object Hixie75Protocol extends WebSocketProtocol {
     // Response should start with fixed header line
     val headerLine = input.readLine()
     val expectedHeaderLine = expectedResponseHeader
+    if (headerLine == null) throw makeException(remoteParty, "Connection closed before header line, expected '" + expectedHeaderLine + "', but got closed connection")
     if (!headerLine.equals(expectedHeaderLine)) throw makeException(remoteParty, "Unexpected header line, expected '" + expectedHeaderLine + "', but got '" + headerLine + "'")
 
     // Followed by a sequence of "parameterName: parameterValue" -pairs, ending with an empty line.
